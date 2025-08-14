@@ -1,4 +1,4 @@
-const SHEET_API = "https://script.google.com/macros/s/AKfycbxN4NpzbHUG_sdtI_VPAcG4Aa7_yFaRsg1MKm4-d_PpQ8HxWbdS1wz8K7B9j9LsMm-I0w/exec";
+const SHEET_API = "https://script.google.com/macros/s/AKfycbwnO7Ues6G0oEJmuQJ7C142hCZC-irNDd5TTKL2nykZTnVQQaKQpCm6hlXdb64qY0X31w/exec";
 
 const nameScreen = document.getElementById('nameScreen');
 const gameScreen = document.getElementById('gameScreen');
@@ -170,3 +170,4 @@ document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape' && customAlert.classList.contains('show')) closeCustomAlert();
 });
 customAlert.addEventListener('click', (e)=>{ if (e.target===customAlert) closeCustomAlert(); });
+
