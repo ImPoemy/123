@@ -1,6 +1,17 @@
 // === Google Apps Script 部署後的 Web App URL ===
 const SHEET_API = "https://script.google.com/macros/s/AKfycbwkkZUN1Wgu8pUH51FmntixY6beb6A8Pcmonoj2JjTiQ7Zh4b9A2jBl5l534cj_9xd32A/exec"; 
 
+function sendDiceResult(player, result) {
+  fetch(SHEET_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player: player, result: result })
+  })
+  .then(res => res.json())
+  .then(data => console.log("已送出到試算表：", data))
+  .catch(err => console.error("送出錯誤：", err));
+}
+
 // DOM 元素
 const nameScreen = document.getElementById('nameScreen');
 const gameScreen = document.getElementById('gameScreen');
@@ -107,6 +118,14 @@ function rollDice(){
   },50);
 }
 
+function addRollToHistory(player, result){
+  const timestamp = new Date().toLocaleString('zh-TW', { hour12:false });
+  rollHistory.push({ player, result, timestamp });
+  sendDiceResult(player, result); // ← 把結果送到 Google 試算表
+  updateAdminStats();
+  saveToday();
+}
+
 // 加入紀錄
 function addRollToHistory(player, result){
   const timestamp = new Date().toLocaleString('zh-TW', { hour12:false });
@@ -159,3 +178,4 @@ document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape' && customAlert.classList.contains('show')) closeCustomAlert();
 });
 customAlert.addEventListener('click', (e)=>{ if (e.target===customAlert) closeCustomAlert(); });
+
