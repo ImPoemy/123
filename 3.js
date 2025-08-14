@@ -1,3 +1,19 @@
+// ==== 你的 Google Apps Script Web App URL（部署後複製貼上） ====
+const SHEET_API = "https://script.google.com/macros/s/AKfycbyKiVDne1LTJ0oKzhEJOAnyL3ZIVUtgws-KvfSlSt_HtEXPLjstFuilzMaR8wKrlHVVUA/exec";
+
+// ==== 發送玩家結果到 Google 試算表 ====
+function sendDiceResult(player, result) {
+  fetch(SHEET_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player: player, result: result })
+  })
+  .then(res => res.json())
+  .then(data => console.log("已送出到試算表：", data))
+  .catch(err => console.error("送出錯誤：", err));
+}
+
+// ==== UI 元素 ====
 const nameScreen = document.getElementById('nameScreen');
 const gameScreen = document.getElementById('gameScreen');
 const adminScreen = document.getElementById('adminScreen');
@@ -15,21 +31,7 @@ const customAlert = document.getElementById('customAlert');
 
 const diceEmojis = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
-// ==== 你的 Google Apps Script Web App URL（部署後複製貼上） ====
-const SHEET_API = "https://script.google.com/macros/s/AKfycbxwGRWPsUJHQGRknViOggBDgvA36SZnqjPcFSeMJ-KEXjQPxInIgQTLLjoXT1Ak9qPBfA/exec";
-
-// 發送玩家結果到 Google 試算表
-function sendDiceResult(player, result) {
-  fetch(SHEET_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player: player, result: result })
-  })
-  .then(res => res.json())
-  .then(data => console.log("已送出到試算表：", data))
-  .catch(err => console.error("送出錯誤：", err));
-}
-
+// ==== 日期 Key ====
 function todayKey(){
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -38,12 +40,14 @@ function todayKey(){
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// ==== 狀態變數 ====
 let currentPlayer = '';
 let rollHistory = [];
 let playedPlayers = new Set();
 
 const STORAGE_KEY = () => `diceGame_${todayKey()}`;
 
+// ==== 提示 ====
 function showCustomAlert(playerName){
   const playerRoll = rollHistory.find(r => r.player === playerName);
   const alertMessage = document.querySelector('.alert-message');
@@ -59,6 +63,7 @@ function showCustomAlert(playerName){
 }
 function closeCustomAlert(){ customAlert.classList.remove('show'); playerNameInput.value=''; playerNameInput.focus(); }
 
+// ==== 本地儲存 ====
 function saveToday(){
   const d = { rollHistory, playedPlayers:[...playedPlayers] };
   localStorage.setItem(STORAGE_KEY(), JSON.stringify(d));
@@ -75,6 +80,7 @@ function loadToday(){
 
 window.addEventListener('load', ()=>{ loadToday(); });
 
+// ==== 遊戲流程 ====
 function startGame(){
   const playerName = playerNameInput.value.trim();
   if (!playerName){ alert('請輸入會員帳號！'); return; }
@@ -105,6 +111,10 @@ function rollDice(){
       addRollToHistory(currentPlayer, finalResult);
       playedPlayers.add(currentPlayer);
       saveToday();
+
+      // === 把結果送到 Google 試算表 ===
+      sendDiceResult(currentPlayer, finalResult);
+
       setTimeout(()=>{
         diceDiv.classList.remove('rolling');
         rollButton.disabled = true;
@@ -121,11 +131,9 @@ function addRollToHistory(player, result){
   rollHistory.push({ player, result, timestamp });
   updateAdminStats();
   saveToday();
-
-  // 新增：把結果送到 Google 試算表
-  sendDiceResult(player, result);
 }
 
+// ==== 後台 ====
 function updateAdminStats(){ totalRollsElement.textContent = rollHistory.length; }
 function updateAdminDisplay(){
   if (!rollHistory.length){
@@ -146,6 +154,7 @@ function updateAdminDisplay(){
 function showAdminPanel(){ gameScreen.style.display='none'; adminScreen.style.display='block'; updateAdminDisplay(); }
 function backToGame(){ adminScreen.style.display='none'; gameScreen.style.display='block'; }
 
+// ==== 事件監聽 ====
 startButton.addEventListener('click', startGame);
 rollButton.addEventListener('click', rollDice);
 adminButton.addEventListener('click', showAdminPanel);
@@ -158,4 +167,3 @@ document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape' && customAlert.classList.contains('show')) closeCustomAlert();
 });
 customAlert.addEventListener('click', (e)=>{ if (e.target===customAlert) closeCustomAlert(); });
-
