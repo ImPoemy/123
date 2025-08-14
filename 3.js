@@ -15,6 +15,21 @@ const customAlert = document.getElementById('customAlert');
 
 const diceEmojis = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
+// ==== 你的 Google Apps Script Web App URL（部署後複製貼上） ====
+const SHEET_API = "https://script.google.com/macros/s/你的ID/exec";
+
+// 發送玩家結果到 Google 試算表
+function sendDiceResult(player, result) {
+  fetch(SHEET_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player: player, result: result })
+  })
+  .then(res => res.json())
+  .then(data => console.log("已送出到試算表：", data))
+  .catch(err => console.error("送出錯誤：", err));
+}
+
 function todayKey(){
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -106,6 +121,9 @@ function addRollToHistory(player, result){
   rollHistory.push({ player, result, timestamp });
   updateAdminStats();
   saveToday();
+
+  // 新增：把結果送到 Google 試算表
+  sendDiceResult(player, result);
 }
 
 function updateAdminStats(){ totalRollsElement.textContent = rollHistory.length; }
@@ -140,20 +158,3 @@ document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape' && customAlert.classList.contains('show')) closeCustomAlert();
 });
 customAlert.addEventListener('click', (e)=>{ if (e.target===customAlert) closeCustomAlert(); });
-
-function sendGameResult(username, score) {
-    fetch("https://script.google.com/macros/s/AKfycbzWgkNWneexN2fO3E2tMrPQaePFs8io9usRb4SbmwG3cHslp-e7Sz3EkMXJ5Ccgc-KTPA/exec", {
-        method: "POST",
-        mode: "no-cors", // 不檢查回應（Google Web App 常用）
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            username: username,
-            score: score
-        })
-    });
-}
-
-// 假設遊戲結束
-sendGameResult("玩家A", 999);
