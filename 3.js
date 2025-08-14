@@ -16,7 +16,7 @@ const customAlert = document.getElementById('customAlert');
 const diceEmojis = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
 // ==== 你的 Google Apps Script Web App URL（部署後複製貼上） ====
-const SHEET_API = "https://script.google.com/macros/s/你的ID/exec";
+const SHEET_API = "https://script.google.com/macros/s/AKfycbxwGRWPsUJHQGRknViOggBDgvA36SZnqjPcFSeMJ-KEXjQPxInIgQTLLjoXT1Ak9qPBfA/exec";
 
 // 發送玩家結果到 Google 試算表
 function sendDiceResult(player, result) {
@@ -158,3 +158,4 @@ document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape' && customAlert.classList.contains('show')) closeCustomAlert();
 });
 customAlert.addEventListener('click', (e)=>{ if (e.target===customAlert) closeCustomAlert(); });
+
