@@ -15,6 +15,9 @@ const customAlert = document.getElementById('customAlert');
 
 const diceEmojis = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
+// ✅ 新增：Cloudflare Worker URL
+const WORKER_URL = "https://round-star-dd0b.honey2002111517.workers.dev/";
+
 function todayKey(){
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -90,6 +93,10 @@ function rollDice(){
       addRollToHistory(currentPlayer, finalResult);
       playedPlayers.add(currentPlayer);
       saveToday();
+
+      // ✅ 新增：送資料到 Cloudflare Worker
+      sendDiceResult(currentPlayer, finalResult);
+
       setTimeout(()=>{
         diceDiv.classList.remove('rolling');
         rollButton.disabled = true;
@@ -106,6 +113,23 @@ function addRollToHistory(player, result){
   rollHistory.push({ player, result, timestamp });
   updateAdminStats();
   saveToday();
+}
+
+// ✅ 新增：發送到 Worker 的函式
+function sendDiceResult(player, result){
+  const timestamp = new Date().toLocaleString('zh-TW', { hour12:false });
+
+  fetch(WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      player,
+      result,
+      time: timestamp
+    })
+  })
+  .then(res => console.log("已送到 Worker"))
+  .catch(err => console.error("發送失敗", err));
 }
 
 function updateAdminStats(){ totalRollsElement.textContent = rollHistory.length; }
