@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>刮刮樂 Scratch Card UI — HTML Demo</title>
+  <style>
+    :root{
+      --card-w: min(92vw, 420px);
+      --card-h: 260px;
+      --radius: 20px;
+      --bg: #0f1020;
+      --text: #f2f5f9;
+      --accent: #8b5cf6;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      display:grid;
+      place-items:center;
+      background: radial-gradient(1000px 600px at 20% 0%, #17192e 0%, #0f1020 50%, #0b0c17 100%);
+      color:var(--text);
+      font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    .app{
+      width:min(96vw, 520px);
+      padding:20px 20px 26px;
+      border-radius:24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+      backdrop-filter: blur(8px);
+    }
+
+    .header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;
+    }
+    .title{ font-size:18px; letter-spacing:.5px; font-weight:700; display:flex; align-items:center; gap:10px; }
+    .badge{ font-size:12px; padding:4px 8px; border-radius:999px; background:rgba(139,92,246,.16); color:#d9ccff; border:1px solid rgba(139,92,246,.35); }
+
+    .actions{ display:flex; gap:10px; }
+    button{
+      appearance:none; border:none; cursor:pointer;
+      padding:10px 14px; border-radius:12px; font-weight:600; letter-spacing:.2px;
+      background:#22243d; color:#e9ecff; border:1px solid rgba(255,255,255,0.08);
+      transition:.2s transform, .2s background, .2s opacity;
+    }
+    button.primary{ background: linear-gradient(180deg, #9b6bff, #7a4df3); border-color:#a490ff; color:white; }
+    button:active{ transform:translateY(1px); }
+
+    .card-wrap{ position:relative; width:var(--card-w); height:var(--card-h); margin:16px auto; }
+    .scratch-card{
+      position:relative; width:100%; height:100%; border-radius:var(--radius);
+      overflow:hidden; border:1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+      background:#111325;
+    }
+
+    /* 隱藏層（獎項） */
+    .prize{
+      position:absolute; inset:0; display:grid; place-items:center; 
+      background: radial-gradient(800px 400px at 100% 0%, rgba(139,92,246,.25), transparent 60%),
+                  radial-gradient(700px 500px at 0% 100%, rgba(0,255,224,.16), transparent 60%),
+                  linear-gradient(180deg, #0d0f21, #0a0b18);
+      color:white;
+    }
+    .prize-inner{ text-align:center; padding:20px; }
+    .prize-emoji{ font-size:40px; filter: drop-shadow(0 6px 12px rgba(0,0,0,.35)); }
+    .prize-text{ font-size:28px; font-weight:900; letter-spacing:1px; margin-top:10px; }
+    .prize-sub{ font-size:13px; opacity:.8; margin-top:6px; }
+
+    /* 刮刮層（覆蓋層） */
+    canvas.overlay{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+    .hint{
+      position:absolute; inset:auto 0 10px 0; text-align:center; font-size:12px; opacity:.75; color:#cfd3ff;
+      text-shadow: 0 1px 0 rgba(0,0,0,.6);
+      pointer-events:none;
+    }
+
+    /* 進度條 */
+    .progress{
+      margin-top:12px; height:8px; width:100%; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .progress > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg, #7a4df3, #23d5ab); transition: width .25s ease; }
+
+    /* confetti 畫布置頂 */
+    canvas#confetti{ position:absolute; inset:0; pointer-events:none; }
+
+    .footer-note{ opacity:.7; font-size:12px; text-align:center; margin-top:12px; }
+    .footer-note code{ background:rgba(255,255,255,.06); padding:2px 6px; border-radius:8px; border:1px solid rgba(255,255,255,.08); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="title">🎟️ 刮刮樂 <span class="badge">可刮的 UI</span></div>
+      <div class="actions">
+        <button id="revealBtn" class="">直接揭曉</button>
+        <button id="resetBtn" class="primary">重玩一次</button>
+      </div>
+    </div>
+
+    <div class="card-wrap">
+      <div class="scratch-card" id="card">
+        <div class="prize" id="prize">
+          <div class="prize-inner">
+            <div class="prize-emoji" id="prizeEmoji">🎉</div>
+            <div class="prize-text" id="prizeText">恭喜中獎！</div>
+            <div class="prize-sub" id="prizeSub">向上刮開銀漆查看獎項</div>
+          </div>
+        </div>
+        <canvas class="overlay" id="overlay"></canvas>
+        <div class="hint">用手指或滑鼠刮開 ▶︎</div>
+        <canvas id="confetti"></canvas>
+      </div>
+      <div class="progress" aria-label="已刮開比例"><i id="bar"></i></div>
+    </div>
+
+    <div class="footer-note">可在 <code>CONFIG.prizes</code> 自訂獎項；也可在 <code>onReveal()</code> 內串接 API／寫入 Google 試算表。</div>
+  </div>
+
+  <script>
+  // ====== 可調整參數 ======
+  const CONFIG = {
+    brushSize: 26,            // 筆刷半徑（像素）
+    finishThreshold: 0.6,     // 刮開比例達到多少自動揭曉（0~1）
+    metallicNoise: 0.08,      // 覆蓋層雜訊強度（0~0.3）
+    sampleStride: 8,          // 計算刮開比例時的取樣步距（越大越省效能）
+    prizes: [                 // 自訂獎項（可自由增刪）
+      { text:'恭喜中 588！', sub:'今天手氣不錯 🍀', emoji:'💎' },
+      { text:'再接再厲', sub:'下次必出大獎 ✨', emoji:'🌟' },
+      { text:'恭喜中 88！', sub:'甜甜補助到手', emoji:'🧧' },
+      { text:'恭喜中 168！', sub:'今晚加菜吧', emoji:'🎁' },
+      { text:'中大獎 888！', sub:'請朋友喝飲料～', emoji:'🥤' }
+    ]
+  };
+
+  // ====== DOM ======
+  const overlay = document.getElementById('overlay');
+  const confettiCanvas = document.getElementById('confetti');
+  const prizeText = document.getElementById('prizeText');
+  const prizeSub  = document.getElementById('prizeSub');
+  const prizeEmoji= document.getElementById('prizeEmoji');
+  const bar = document.getElementById('bar');
+  const revealBtn = document.getElementById('revealBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let ctx, cw, ch, dpr, drawing=false, last=null, cleared=false, pixelsCleared=0;
+  let prizeData = null;
+
+  function pickPrize(){
+    prizeData = CONFIG.prizes[Math.floor(Math.random()*CONFIG.prizes.length)];
+    prizeText.textContent = prizeData.text;
+    prizeSub.textContent  = prizeData.sub;
+    prizeEmoji.textContent= prizeData.emoji;
+  }
+
+  function setupCanvas(){
+    const rect = overlay.getBoundingClientRect();
+    dpr = Math.max(1, window.devicePixelRatio || 1);
+    cw = Math.round(rect.width);
+    ch = Math.round(rect.height);
+    overlay.width = Math.round(cw * dpr);
+    overlay.height= Math.round(ch * dpr);
+    overlay.style.width = cw + 'px';
+    overlay.style.height= ch + 'px';
+    ctx = overlay.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    drawMetallicOverlay();
+  }
+
+  function drawMetallicOverlay(){
+    // 背景金屬漆
+    const g = ctx.createLinearGradient(0,0,cw,ch);
+    g.addColorStop(0, '#b6bcc9');
+    g.addColorStop(0.5, '#dde0e6');
+    g.addColorStop(1, '#a7aebd');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,cw,ch);
+
+    // 斜向細線（刷紋）
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    for(let i=-cw; i<cw+ch; i+=6){
+      ctx.beginPath();
+      ctx.moveTo(i,0);
+      ctx.lineTo(i+ch,ch);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // 加一點雜訊，像金屬顆粒
+    const noise = Math.min(Math.max(CONFIG.metallicNoise, 0), .3);
+    if(noise>0){
+      const count = Math.floor(cw*ch*noise*0.05);
+      ctx.save();
+      ctx.globalAlpha = .2;
+      for(let i=0;i<count;i++){
+        const x = Math.random()*cw;
+        const y = Math.random()*ch;
+        const r = Math.random()*1.2 + 0.3;
+        ctx.fillStyle = Math.random()>.5? 'rgba(255,255,255,.8)': 'rgba(0,0,0,.6)';
+        ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 提示文字（水印）
+    ctx.save();
+    ctx.globalAlpha = .25;
+    ctx.fillStyle = '#2b2f3b';
+    ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.translate(cw/2, ch/2);
+    ctx.rotate(-Math.PI/16);
+    ctx.fillText('刮開有驚喜', 0, 0);
+    ctx.restore();
+
+    // 初始化狀態
+    overlay.style.opacity = 1;
+    overlay.style.transition = 'opacity .4s ease';
+    cleared = false;
+    setProgress(0);
+  }
+
+  function setProgress(p){
+    bar.style.width = Math.max(0, Math.min(100, Math.round(p*100))) + '%';
+  }
+
+  function pointFromEvent(e){
+    const rect = overlay.getBoundingClientRect();
+    const x = (e.clientX ?? (e.touches && e.touches[0].clientX)) - rect.left;
+    const y = (e.clientY ?? (e.touches && e.touches[0].clientY)) - rect.top;
+    return {x: Math.max(0, Math.min(cw, x)), y: Math.max(0, Math.min(ch, y))};
+  }
+
+  function scratchLine(p1, p2){
+    const r = CONFIG.brushSize;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = r*2;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    // 填補端點
+    ctx.beginPath(); ctx.arc(p2.x, p2.y, r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  let sampleTick = 0;
+  function handleMove(e){
+    if(!drawing || cleared) return;
+    const p = pointFromEvent(e);
+    if(!last) last = p;
+    scratchLine(last, p);
+    last = p;
+    if(navigator.vibrate){ try{ navigator.vibrate(2); }catch(_){} }
+
+    // 降低取樣頻率，提升效能
+    if(++sampleTick % 8 === 0){
+      const ratio = estimateClearedRatio();
+      setProgress(ratio);
+      if(ratio >= CONFIG.finishThreshold){ reveal(); }
+    }
+    e.preventDefault();
+  }
+
+  function estimateClearedRatio(){
+    // 取像素資料並估算透明比例
+    const stride = Math.max(2, CONFIG.sampleStride|0);
+    const img = ctx.getImageData(0, 0, Math.floor(cw*dpr), Math.floor(ch*dpr));
+    const data = img.data;
+    let clearedCnt = 0, total = 0;
+    // 針對 alpha 通道，每 stride 取樣一個像素
+    for(let y=0; y<img.height; y+=stride){
+      for(let x=0; x<img.width; x+=stride){
+        const idx = (y*img.width + x)*4 + 3; // alpha 索引
+        const a = data[idx];
+        if(a < 16) clearedCnt++; // 幾乎透明
+        total++;
+      }
+    }
+    return total? (clearedCnt/total) : 0;
+  }
+
+  function reveal(){
+    if(cleared) return; cleared = true;
+    overlay.style.opacity = 0;
+    // 簡單 confetti
+    burstConfetti();
+    onReveal(prizeData);
+  }
+
+  function onReveal(prize){
+    // 👉 這裡可串接後端：例如 fetch(...) 寫入中獎結果到資料庫／Google 試算表
+    // 範例：console.log 代替
+    console.log('[揭曉] 使用者中獎：', prize);
+  }
+
+  function reset(){
+    pickPrize();
+    setupCanvas();
+  }
+
+  // ====== 事件綁定（使用 Pointer Events，涵蓋滑鼠與觸控） ======
+  overlay.addEventListener('pointerdown', e=>{ drawing = true; last = pointFromEvent(e); handleMove(e); });
+  overlay.addEventListener('pointermove', handleMove);
+  overlay.addEventListener('pointerup',   ()=>{ drawing = false; last=null; setProgress(estimateClearedRatio()); });
+  overlay.addEventListener('pointerleave',()=>{ drawing = false; last=null; });
+  overlay.addEventListener('pointercancel',()=>{ drawing = false; last=null; });
+
+  window.addEventListener('resize', ()=>{ // 視窗改變時重建畫布（不重抽獎）
+    const keepPrize = prizeData; setupCanvas(); prizeData = keepPrize; 
+  });
+
+  revealBtn.addEventListener('click', reveal);
+  resetBtn.addEventListener('click', reset);
+
+  // ====== Confetti 動畫（純原生） ======
+  const c2 = confettiCanvas, c2ctx = c2.getContext('2d');
+  function resizeConfetti(){
+    const rect = overlay.getBoundingClientRect();
+    c2.width = Math.round(rect.width * dpr);
+    c2.height= Math.round(rect.height* dpr);
+    c2.style.width = rect.width + 'px';
+    c2.style.height= rect.height+ 'px';
+    c2ctx.setTransform(dpr,0,0,dpr,0,0);
+    c2ctx.clearRect(0,0,cw,ch);
+  }
+
+  function burstConfetti(){
+    resizeConfetti();
+    const pieces = [];
+    const colors = ['#7a4df3','#23d5ab','#f9d423','#ff4d5a','#3ec5ff'];
+    const N = 80;
+    for(let i=0;i<N;i++){
+      pieces.push({
+        x:cw/2, y:ch/2, r:Math.random()*6+2,
+        vx:(Math.random()-0.5)*6, vy:(Math.random()*-6-3),
+        a:Math.random()*Math.PI*2, va:(Math.random()-0.5)*0.2,
+        g:0.18+Math.random()*0.05, color: colors[i%colors.length], life: 90+Math.random()*30
+      });
+    }
+    let frame=0;
+    (function tick(){
+      frame++; c2ctx.clearRect(0,0,cw,ch);
+      pieces.forEach(p=>{
+        p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.a+=p.va; p.life--;
+        c2ctx.save(); c2ctx.translate(p.x,p.y); c2ctx.rotate(p.a);
+        c2ctx.fillStyle=p.color; c2ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r);
+        c2ctx.restore();
+      });
+      // 移除生命值小於 0 的紙片
+      for(let i=pieces.length-1;i>=0;i--){ if(pieces[i].life<=0) pieces.splice(i,1); }
+      if(pieces.length>0) requestAnimationFrame(tick); else c2ctx.clearRect(0,0,cw,ch);
+    })();
+  }
+
+  // ====== 啟動 ======
+  pickPrize();
+  setupCanvas();
+  
+  </script>
+</body>
+</html>
